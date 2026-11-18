@@ -43,6 +43,20 @@ rolling midnight-local unlock, but the backtest and the filter choices share
 the same 30 games, so treat 0.283 as optimistic — the final is a single
 game and the true edge is probably smaller.
 
+## Revision (2026-11-18)
+
+Robustness hardening, model unchanged — the practice-case outputs are
+byte-identical to the first version and the backtest above is unmoved:
+
+- **Hour-1 print is now validated** (`hour1_print` in `main.py`): the last
+  hour-1 entry wins if several are listed, and its `viewers` must be a
+  finite number — a missing, `None`, string or `NaN` print now raises a
+  clear `ValueError` instead of crashing later with a confusing
+  `TypeError`/`KeyError` and invalidating the whole case.
+- **The forecast contract is now checked up front**: the case must ask for
+  exactly hours 2–24, each once, or the run refuses with a clear error
+  instead of silently writing a wrong-shaped forecast.
+
 ## Run locally
 
 ```sh

@@ -154,13 +154,30 @@ def round2(x):
     return int(value) if float(value).is_integer() else value
 
 
+def hour1_print(case, name):
+    """Hour-1 print (viewers) from the case's known entries.
+
+    Takes the LAST hour-1 entry if several are listed (the most recent
+    print wins over a superseded one) and requires its viewers to be a
+    finite number. A missing or unusable hour-1 print is a data error,
+    raised clearly here instead of crashing later on a None, a string
+    or a NaN (which would make the whole case invalid).
+    """
+    entries = [k for k in case.get("known") or [] if k.get("hour") == 1]
+    if not entries:
+        raise ValueError(f"{name} has no hour-1 print")
+    viewers = entries[-1].get("viewers")
+    if isinstance(viewers, bool) or not isinstance(viewers, (int, float)):
+        raise ValueError(f"{name} hour-1 print is not a number: {viewers!r}")
+    if not math.isfinite(viewers):
+        raise ValueError(f"{name} hour-1 print is not finite: {viewers!r}")
+    return max(1, viewers)
+
+
 def forecast_case(case, name):
     if case.get("levels") != LEVELS:
         raise ValueError(f"{name} asks for levels {case.get('levels')}, not {LEVELS}")
-    first = next((k for k in case.get("known") or [] if k.get("hour") == 1), None)
-    if first is None:
-        raise ValueError(f"{name} has no hour-1 print")
-    p1 = max(1, first["viewers"])
+    p1 = hour1_print(case, name)
 
     pool = valid_comparables(case)
     rolling = [item for item in pool if is_rolling_midnight(item[2])]
@@ -172,6 +189,12 @@ def forecast_case(case, name):
     if len(median_pool) < MIN_POOL_GAMES:
         median_pool = pool
     spread_pool = pool
+
+    # The contract is hours 2..24, each once: refuse a case that asks for
+    # anything else instead of silently writing a wrong-shaped forecast.
+    want = [row.get("hour") for row in case.get("forecast") or []]
+    if sorted(want) != list(range(2, 25)):
+        raise ValueError(f"{name} asks to forecast hours {want}, not 2..24")
 
     hours = []
     for row in case["forecast"]:
